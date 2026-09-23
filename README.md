@@ -4,7 +4,7 @@ A local, open-source web UI for getting a holistic overview of your [Agent Skill
 
 Claude Desktop's skills screen is a flat list. Skills UI merges every place skills live on your machine into one searchable, filterable view.
 
-> **Status: Phase 2.** Read-only overview with automatic categories, tags and near-duplicate detection. Editing (CRUD) and marketplace packaging are planned; see [Roadmap](#roadmap).
+> **Status: Phase 3.** Browse, auto-categorize, and create / edit / duplicate / delete skills. Marketplace packaging is planned; see [Roadmap](#roadmap).
 
 ## What it scans
 
@@ -17,6 +17,18 @@ Claude Desktop's skills screen is a flat list. Skills UI merges every place skil
 | Custom folders      | `SKILLS_UI_EXTRA_DIRS`                                                                                                    | Yes                           |
 
 Copies that Claude Code mirrors into `~/.claude/skills/synced/` are de-duplicated against the Desktop store.
+
+## Editing skills
+
+Editable sources (Personal, custom folders) support full CRUD from the UI:
+
+- **New skill** — name, description and Markdown instructions from a template. Names are validated live (`lowercase-with-hyphens`, ≤ 64 chars; description ≤ 1024).
+- **Edit** — changes name-locked `description` and body; every other frontmatter key (e.g. `license`) is preserved. Saves are atomic, and a save is **blocked if the file changed on disk** after you opened it, so edits made in another editor are never silently overwritten.
+- **Duplicate** — copies the whole folder (scripts and assets included). On read-only sources (Claude Desktop, plugins) this is **Duplicate to Personal**, which gives you an editable copy.
+- **Delete** — moves the folder to `~/.skills-ui/trash/` and offers **Undo**; restore refuses to overwrite anything created since.
+- **Live updates** — the server watches your editable folders and the Desktop store, so changes made in a terminal or editor appear without a refresh.
+
+Claude Desktop's own store and plugin folders are never written to.
 
 ## Automatic organization
 
@@ -68,16 +80,16 @@ See [`.env.example`](.env.example).
 npm workspaces monorepo, TypeScript strict throughout.
 
 - `packages/core` — pure Node library: SKILL.md parser, source discovery, scanner, facets, categorizer, similarity. No network.
-- `packages/server` — Hono API (`/api/skills`, `/api/skills/:id`, `/api/categories`, `PUT /api/skills/:id/category`, `/api/facets`), bound to `127.0.0.1` only. Serves the built web app.
+- `packages/server` — Hono API for reading, editing and live events (`/api/skills`, `/api/categories`, `/api/targets`, `/api/events`, and POST/PUT/DELETE on skills), bound to `127.0.0.1` only. Serves the built web app.
 - `packages/web` — Vite + React + Tailwind. Filtering and sorting run client-side over the skill summaries.
 
-The filesystem is the source of truth. The only file Skills UI writes is `~/.skills-ui/overrides.json`; writes are same-origin and JSON-only to block cross-site requests.
+The filesystem is the source of truth. Skills UI writes only to editable skill folders you act on, plus its own `~/.skills-ui/` directory (category overrides and trash); writes are same-origin and JSON-only to block cross-site requests.
 
 ## Roadmap
 
 1. ✅ Scanner + overview (grid/table, facets, search, detail drawer)
 2. ✅ Automatic categories, tags and duplicate detection (local, deterministic). Optional: embeddings / Claude-generated labels
-3. Create / edit / duplicate / delete with undo
+3. ✅ Create / edit / duplicate / delete with undo, live updates
 4. Bundle skills into a plugin and generate a `marketplace.json`
 5. Polish, CI, `npx skills-ui`
 

@@ -32,6 +32,8 @@ export interface Skill {
   dir: string;
   /** Absolute path to SKILL.md. */
   file: string;
+  /** Absolute path of the source directory this skill was found under. */
+  root: string;
   source: Pick<SkillSource, 'kind' | 'label' | 'readOnly' | 'plugin'>;
   /** Present for Claude Desktop skills (from manifest.json). */
   creatorType?: string;
@@ -66,5 +68,6 @@ export interface Analysis {
   similar: SimilarRef[];
 }
 
-export type SkillSummary = Omit<Skill, 'body' | 'file' | 'dir'> & Analysis;
-export type SkillDetail = Skill & Analysis;
+export type SkillSummary = Omit<Skill, 'body' | 'file' | 'dir' | 'root'> & Analysis;
+/** `etag` identifies the file content; send it back with an edit to detect concurrent changes. */
+export type SkillDetail = Skill & Analysis & { etag: string };

@@ -6,3 +6,5 @@ export * from './facets.js';
 export * from './taxonomy.js';
 export * from './categorize.js';
 export * from './similar.js';
+export * from './write.js';
+export * from './validate.js';

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { fetchSkills } from './api';
+import { fetchSkills, onSkillsChanged } from './api';
 import { Sidebar } from './components/Sidebar';
+import { NewSkillDialog } from './components/NewSkillDialog';
 import { SkillDrawer } from './components/SkillDrawer';
 import { SkillCard, SkillRow } from './components/SkillViews';
+import { Toast, type ToastData } from './components/Toast';
 import { applyFilters, emptyFilters, type Filters, type SortKey } from './filters';
 import type { SkillSummary } from './types';
 
@@ -15,6 +17,8 @@ export default function App() {
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [view, setView] = useState<View>('grid');
   const [selected, setSelected] = useState<string>();
+  const [creating, setCreating] = useState(false);
+  const [toast, setToast] = useState<ToastData>();
   const searchRef = useRef<HTMLInputElement>(null);
 
   const load = (refresh = false) => {
@@ -29,6 +33,9 @@ export default function App() {
   };
   useEffect(() => load(), []);
 
+  // Live updates: the server watches skill folders and pushes a nudge when anything changes.
+  useEffect(() => onSkillsChanged(() => load()), []);
+
   // "/" or ⌘K focuses search.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -37,7 +44,6 @@ export default function App() {
         e.preventDefault();
         searchRef.current?.focus();
       }
-      if (e.key === 'Escape') setSelected(undefined);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -79,6 +85,12 @@ export default function App() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setCreating(true)}
+            className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+          >
+            + New skill
+          </button>
           <button
             onClick={() => load(true)}
             className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-900 dark:hover:bg-stone-800"
@@ -133,8 +145,21 @@ export default function App() {
           onClose={() => setSelected(undefined)}
           onOpen={setSelected}
           onChanged={() => load()}
+          notify={setToast}
         />
       )}
+      {creating && (
+        <NewSkillDialog
+          onClose={() => setCreating(false)}
+          onCreated={(id) => {
+            setCreating(false);
+            load();
+            setSelected(id);
+            setToast({ message: 'Skill created' });
+          }}
+        />
+      )}
+      {toast && <Toast toast={toast} onDismiss={() => setToast(undefined)} />}
     </div>
   );
 }

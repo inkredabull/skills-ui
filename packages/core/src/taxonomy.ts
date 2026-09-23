@@ -23,7 +23,7 @@ export const TAXONOMY: CategoryDef[] = [
   {
     name: 'Engineering',
     keywords:
-      'code coding debug deploy* architecture testing test incident api sdk typescript javascript react next.js nextjs vercel build refactor git github ci cd bootstrap runtime cache function* workflow middleware database sandbox turbopack cli readme standup upgrade forge'.split(
+      'code coding debug deploy* architecture testing test incident api sdk typescript javascript react next.js nextjs vercel build refactor git github ci cd bootstrap runtime cache function* workflow middleware database sandbox turbopack cli bug* pull commit readme standup upgrade forge'.split(
         ' ',
       ),
   },

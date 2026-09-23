@@ -2,6 +2,7 @@ import type { Skill, SkillDetail, SkillSummary } from '@skills-ui/core';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { memoryOverrides } from '../src/overrides.js';
+import type { SkillProvider } from '../src/provider.js';
 
 const skill = (name: string, description: string, source = 'Personal'): Skill => ({
   id: `${name}-${source}`,
@@ -10,6 +11,7 @@ const skill = (name: string, description: string, source = 'Personal'): Skill =>
   body: 'secret body',
   dir: `/x/${name}`,
   file: `/x/${name}/SKILL.md`,
+  root: '/x',
   source: { kind: 'user', label: source, readOnly: false },
   updatedAt: '2026-01-01T00:00:00Z',
   frontmatter: {},
@@ -25,7 +27,18 @@ const skills = [
   skill('meal-planner', 'Plans breakfast lunch and dinner with a shopping list', 'Other'),
   skill('interview-prep', 'Prepare for a job interview and resume review'),
 ];
-const makeApp = () => createApp({ load: async () => skills }, memoryOverrides());
+const fakeProvider = (): SkillProvider => ({
+  load: async () => skills,
+  targets: () => [],
+  watchRoots: async () => [],
+  invalidate: () => undefined,
+});
+const makeApp = () =>
+  createApp({
+    provider: fakeProvider(),
+    overrides: memoryOverrides(),
+    trashDir: '/nonexistent-trash',
+  });
 const json = { 'content-type': 'application/json', host: 'localhost:4173' };
 
 describe('reads', () => {

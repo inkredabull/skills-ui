@@ -1,17 +1,33 @@
 import { existsSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createApp } from './app.js';
+import { createEventBus } from './events.js';
 import { fileOverrides } from './overrides.js';
 import { createProvider } from './provider.js';
+import { watchRoots } from './watch.js';
 
 const port = Number(process.env.PORT ?? 4173);
 const extraDirs = (process.env.SKILLS_UI_EXTRA_DIRS ?? '').split(':').filter(Boolean);
-const app = createApp(
-  createProvider(process.env.SKILLS_UI_HOME || undefined, extraDirs),
-  fileOverrides(),
+const home = process.env.SKILLS_UI_HOME || os.homedir();
+const provider = createProvider(home, extraDirs);
+const events = createEventBus();
+const app = createApp({
+  provider,
+  overrides: fileOverrides(home),
+  trashDir: path.join(home, '.skills-ui', 'trash'),
+  events,
+});
+
+// Live updates: refresh the cache and nudge open browsers whenever skill folders change on disk.
+void provider.watchRoots().then((roots) =>
+  watchRoots(roots, () => {
+    provider.invalidate();
+    events.publish();
+  }),
 );
 
 // Serve the built web app when present (production / `npx skills-ui`).

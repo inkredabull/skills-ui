@@ -2,7 +2,15 @@ import {
   buildFacets,
   categorizeAll,
   findSimilar,
+  createSkill,
+  duplicateSkill,
+  fileEtag,
   matchesQuery,
+  restoreTrash,
+  SkillWriteError,
+  skillId,
+  trashSkill,
+  updateSkill,
   TAXONOMY,
   OTHER,
   type Analysis,
@@ -12,14 +20,29 @@ import {
   type SkillSummary,
   type SimilarRef,
 } from '@skills-ui/core';
-import { Hono } from 'hono';
+import { promises as fs } from 'node:fs';
+import { Hono, type Context } from 'hono';
+import { streamSSE } from 'hono/streaming';
+import type { EventBus } from './events.js';
 import type { OverrideStore } from './overrides.js';
+import type { SkillProvider } from './provider.js';
 
-export interface SkillProvider {
-  load(force?: boolean): Promise<Skill[]>;
+export interface AppDeps {
+  provider: SkillProvider;
+  overrides: OverrideStore;
+  trashDir: string;
+  events?: EventBus;
 }
 
-const DETAIL_ONLY = new Set(['body', 'file', 'dir']);
+const STATUS = {
+  invalid: 400,
+  forbidden: 403,
+  'not-found': 404,
+  exists: 409,
+  conflict: 409,
+} as const;
+
+const DETAIL_ONLY = new Set(['body', 'file', 'dir', 'root']);
 const SIMILAR_THRESHOLD = 0.55;
 const MAX_CATEGORY_LENGTH = 40;
 
@@ -38,7 +61,7 @@ interface Computed {
   similar: Map<string, SimilarRef[]>;
 }
 
-export function createApp(provider: SkillProvider, overrides: OverrideStore): Hono {
+export function createApp({ provider, overrides, trashDir, events }: AppDeps): Hono {
   const app = new Hono();
 
   // Analysis is derived from the skill list, so recompute only when the list changes.
@@ -105,9 +128,11 @@ export function createApp(provider: SkillProvider, overrides: OverrideStore): Ho
     const skills = await provider.load();
     const skill = skills.find((s) => s.id === c.req.param('id'));
     if (!skill) return c.json({ error: 'not found' }, 404);
+    const etag = fileEtag(await fs.readFile(skill.file, 'utf8').catch(() => ''));
     const detail: SkillDetail = {
       ...skill,
       ...analyze(skill, compute(skills), await overrides.all()),
+      etag,
     };
     return c.json(detail);
   });
@@ -144,6 +169,104 @@ export function createApp(provider: SkillProvider, overrides: OverrideStore): Ho
         .sort((a, b) => b.count - a.count),
     );
   });
+
+  // --- Mutations -----------------------------------------------------------------------------
+
+  const readJson = async (c: Context): Promise<Record<string, unknown>> => {
+    const data: unknown = await c.req.json().catch(() => undefined);
+    return data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+  };
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+
+  /** Runs a write, maps SkillWriteError to an HTTP status, and refreshes the cache + live clients. */
+  const mutate = async <T>(c: Context, run: () => Promise<T>) => {
+    try {
+      const result = await run();
+      provider.invalidate();
+      events?.publish();
+      return c.json(result as object);
+    } catch (err) {
+      if (err instanceof SkillWriteError) {
+        return c.json({ error: err.message, code: err.code }, STATUS[err.code]);
+      }
+      throw err;
+    }
+  };
+
+  const targetRoot = (requested: unknown): string | undefined => {
+    const root = str(requested);
+    return provider.targets().find((t) => t.root === root)?.root;
+  };
+
+  app.get('/api/targets', (c) => c.json(provider.targets()));
+
+  app.get('/api/events', (c) =>
+    streamSSE(c, async (stream) => {
+      const off = events?.subscribe(
+        () => void stream.writeSSE({ event: 'changed', data: 'changed' }),
+      );
+      stream.onAbort(() => off?.());
+      while (!stream.aborted) {
+        await stream.writeSSE({ event: 'ping', data: 'ping' });
+        await stream.sleep(25_000);
+      }
+    }),
+  );
+
+  app.post('/api/skills', async (c) => {
+    const body = await readJson(c);
+    const root = targetRoot(body.root);
+    if (!root) return c.json({ error: 'unknown target folder', code: 'forbidden' }, 403);
+    return mutate(c, async () => {
+      const file = await createSkill(root, {
+        name: str(body.name),
+        description: str(body.description),
+        body: str(body.body),
+      });
+      return { id: skillId(file) };
+    });
+  });
+
+  app.put('/api/skills/:id', async (c) => {
+    const skill = (await provider.load()).find((s) => s.id === c.req.param('id'));
+    if (!skill) return c.json({ error: 'not found' }, 404);
+    const body = await readJson(c);
+    return mutate(c, async () => ({
+      etag: await updateSkill(
+        skill,
+        { name: str(body.name), description: str(body.description), body: str(body.body) },
+        str(body.etag),
+      ),
+    }));
+  });
+
+  app.post('/api/skills/:id/duplicate', async (c) => {
+    const skill = (await provider.load()).find((s) => s.id === c.req.param('id'));
+    if (!skill) return c.json({ error: 'not found' }, 404);
+    const body = await readJson(c);
+    const root = targetRoot(body.root);
+    if (!root) return c.json({ error: 'unknown target folder', code: 'forbidden' }, 403);
+    return mutate(c, async () => ({
+      id: skillId(await duplicateSkill(skill, root, str(body.name))),
+    }));
+  });
+
+  app.delete('/api/skills/:id', async (c) => {
+    const skill = (await provider.load()).find((s) => s.id === c.req.param('id'));
+    if (!skill) return c.json({ error: 'not found' }, 404);
+    return mutate(c, async () => {
+      const entry = await trashSkill(skill, trashDir);
+      await overrides.set(skill.id, null);
+      return entry;
+    });
+  });
+
+  app.post('/api/trash/:trashId/restore', (c) =>
+    mutate(c, async () => {
+      const dir = await restoreTrash(trashDir, c.req.param('trashId'));
+      return { id: skillId(`${dir}/SKILL.md`) };
+    }),
+  );
 
   app.get('/api/facets', async (c) => c.json(buildFacets(await provider.load())));
 

@@ -12,6 +12,7 @@ const mk = (name: string, description: string): Skill => ({
   body: '',
   dir: '/x',
   file: `/x/${name}/SKILL.md`,
+  root: '/x',
   source: { kind: 'user', label: 'P', readOnly: false },
   updatedAt: '2026-01-01T00:00:00Z',
   frontmatter: {},
@@ -48,6 +49,7 @@ describe('categorizeAll', () => {
     mk('interview-prep', 'Prepare for a job interview and resume review'),
     mk('performance-review', 'Draft a performance review for an employee'),
     mk('skill-creator', 'Create and improve skills and measure performance'),
+    mk('pr-check', 'Reviews pull requests for bugs'),
     mk('zzz-mystery', 'Frobnicates the widget'),
   ];
   const c = cat(skills);
@@ -60,6 +62,9 @@ describe('categorizeAll', () => {
   it('uses name signals to disambiguate', () => {
     expect(c['performance-review']?.category).toBe('People & legal');
     expect(c['skill-creator']?.category).toBe('AI & agents');
+  });
+  it('recognises pull request review as engineering', () => {
+    expect(c['pr-check']?.category).toBe('Engineering');
   });
   it('falls back to Other with zero confidence', () => {
     expect(c['zzz-mystery']).toMatchObject({ category: 'Other', confidence: 0 });

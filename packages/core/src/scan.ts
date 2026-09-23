@@ -88,6 +88,7 @@ export async function readSkill(
     body,
     dir,
     file,
+    root: source.root,
     source: {
       kind: source.kind,
       label: source.label,
