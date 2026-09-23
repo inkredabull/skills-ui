@@ -1,3 +1,5 @@
+import type { Manifests, MarketplacePlan, PlanIssue } from '@skills-ui/core/packaging';
+import type { SensitiveFinding } from '@skills-ui/core';
 import type { SkillDetail, SkillSummary } from './types';
 
 export async function fetchSkills(refresh = false): Promise<SkillSummary[]> {
@@ -81,4 +83,54 @@ export function onSkillsChanged(listener: () => void): () => void {
   const source = new EventSource('/api/events');
   source.addEventListener('changed', listener);
   return () => source.close();
+}
+
+// --- Marketplaces -----------------------------------------------------------------------------
+
+export type Draft = MarketplacePlan & { id: string; issues?: number };
+
+export interface Preview {
+  issues: PlanIssue[];
+  unresolved: { id: string; name: string; plugin: string }[];
+  files: string[];
+  manifests?: Manifests;
+  findings: SensitiveFinding[];
+}
+
+export interface FolderExport {
+  dir: string;
+  files: number;
+  git?: { initialized: boolean; committed: boolean; message?: string };
+}
+
+export const fetchMarketplaces = () => send<Draft[]>('GET', '/api/marketplaces');
+export const createMarketplace = (plan: Partial<MarketplacePlan> = {}) =>
+  send<Draft>('POST', '/api/marketplaces', plan);
+export const saveMarketplace = (draft: Draft) =>
+  send<Draft>('PUT', `/api/marketplaces/${draft.id}`, draft);
+export const deleteMarketplace = (id: string) =>
+  send<{ ok: true }>('DELETE', `/api/marketplaces/${id}`);
+export const previewMarketplace = (id: string) =>
+  send<Preview>('POST', `/api/marketplaces/${id}/preview`);
+export const exportFolder = (id: string, gitInit: boolean) =>
+  send<FolderExport>('POST', `/api/marketplaces/${id}/export`, { mode: 'folder', gitInit });
+
+/** Downloads the marketplace as a .zip through the browser. */
+export async function exportZip(draft: Draft): Promise<void> {
+  const res = await fetch(`/api/marketplaces/${draft.id}/export`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ mode: 'zip' }),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new ApiError(data.error ?? `Export failed (${res.status})`, res.status);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement('a'), {
+    href: url,
+    download: `${draft.name || 'marketplace'}.zip`,
+  });
+  a.click();
+  URL.revokeObjectURL(url);
 }

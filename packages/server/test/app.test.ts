@@ -1,6 +1,7 @@
 import type { Skill, SkillDetail, SkillSummary } from '@skills-ui/core';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
+import { memoryMarketplaces } from '../src/marketplaces.js';
 import { memoryOverrides } from '../src/overrides.js';
 import type { SkillProvider } from '../src/provider.js';
 
@@ -38,6 +39,8 @@ const makeApp = () =>
     provider: fakeProvider(),
     overrides: memoryOverrides(),
     trashDir: '/nonexistent-trash',
+    marketplaces: memoryMarketplaces(),
+    exportsDir: '/nonexistent-exports',
   });
 const json = { 'content-type': 'application/json', host: 'localhost:4173' };
 

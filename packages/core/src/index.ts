@@ -8,3 +8,6 @@ export * from './categorize.js';
 export * from './similar.js';
 export * from './write.js';
 export * from './validate.js';
+export * from './packaging.js';
+export * from './sensitive.js';
+export * from './export.js';

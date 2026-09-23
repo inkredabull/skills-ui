@@ -24,6 +24,8 @@ import { promises as fs } from 'node:fs';
 import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import type { EventBus } from './events.js';
+import type { MarketplaceStore } from './marketplaces.js';
+import { registerPackagingRoutes } from './packaging-routes.js';
 import type { OverrideStore } from './overrides.js';
 import type { SkillProvider } from './provider.js';
 
@@ -32,6 +34,9 @@ export interface AppDeps {
   overrides: OverrideStore;
   trashDir: string;
   events?: EventBus;
+  marketplaces: MarketplaceStore;
+  /** Where "save to folder" marketplace exports are written. */
+  exportsDir: string;
 }
 
 const STATUS = {
@@ -61,7 +66,14 @@ interface Computed {
   similar: Map<string, SimilarRef[]>;
 }
 
-export function createApp({ provider, overrides, trashDir, events }: AppDeps): Hono {
+export function createApp({
+  provider,
+  overrides,
+  trashDir,
+  events,
+  marketplaces,
+  exportsDir,
+}: AppDeps): Hono {
   const app = new Hono();
 
   // Analysis is derived from the skill list, so recompute only when the list changes.
@@ -267,6 +279,8 @@ export function createApp({ provider, overrides, trashDir, events }: AppDeps): H
       return { id: skillId(`${dir}/SKILL.md`) };
     }),
   );
+
+  registerPackagingRoutes(app, { provider, marketplaces, exportsDir });
 
   app.get('/api/facets', async (c) => c.json(buildFacets(await provider.load())));
 

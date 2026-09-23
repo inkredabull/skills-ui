@@ -4,7 +4,7 @@ A local, open-source web UI for getting a holistic overview of your [Agent Skill
 
 Claude Desktop's skills screen is a flat list. Skills UI merges every place skills live on your machine into one searchable, filterable view.
 
-> **Status: Phase 3.** Browse, auto-categorize, and create / edit / duplicate / delete skills. Marketplace packaging is planned; see [Roadmap](#roadmap).
+> **Status: Phase 4.** Browse, auto-categorize, edit, and package skills into shareable Claude Code plugin marketplaces. Polish and `npx skills-ui` are next; see [Roadmap](#roadmap).
 
 ## What it scans
 
@@ -29,6 +29,22 @@ Editable sources (Personal, custom folders) support full CRUD from the UI:
 - **Live updates** — the server watches your editable folders and the Desktop store, so changes made in a terminal or editor appear without a refresh.
 
 Claude Desktop's own store and plugin folders are never written to.
+
+## Packaging a marketplace
+
+Turn any set of skills into a plugin marketplace that others can install:
+
+1. On the **Skills** page, tick the skills you want and choose **Add to plugin…** (new or existing marketplace and plugin).
+2. On the **Marketplaces** page, fill in the owner, plugin descriptions, versions and license. Everything autosaves to `~/.skills-ui/marketplaces/`, and validation runs as you type (kebab-case names, reserved marketplace names, semver, duplicate skill names).
+3. **Review before sharing** — every file that would be published is scanned for API keys and tokens, private keys, email addresses and personal home paths (e.g. `/Users/you`). Secrets are shown redacted. Export stays locked until you confirm you've reviewed the findings.
+4. **Download .zip** or **Save to folder** (optionally `git init` + first commit). Push the folder to GitHub, then anyone can run:
+
+```
+/plugin marketplace add <github-owner>/<repo>
+/plugin install <plugin>@<marketplace>
+```
+
+The output follows Claude Code's [documented layout](https://code.claude.com/docs/en/plugin-marketplaces): `.claude-plugin/marketplace.json`, and per plugin `plugins/<name>/.claude-plugin/plugin.json` plus `skills/<skill>/` (symlinks are dereferenced; `node_modules` and `.git` are skipped; each `SKILL.md` gets an explicit `name`). Exports are also checked against `claude plugin validate .` during development.
 
 ## Automatic organization
 
@@ -83,14 +99,14 @@ npm workspaces monorepo, TypeScript strict throughout.
 - `packages/server` — Hono API for reading, editing and live events (`/api/skills`, `/api/categories`, `/api/targets`, `/api/events`, and POST/PUT/DELETE on skills), bound to `127.0.0.1` only. Serves the built web app.
 - `packages/web` — Vite + React + Tailwind. Filtering and sorting run client-side over the skill summaries.
 
-The filesystem is the source of truth. Skills UI writes only to editable skill folders you act on, plus its own `~/.skills-ui/` directory (category overrides and trash); writes are same-origin and JSON-only to block cross-site requests.
+The filesystem is the source of truth. Skills UI writes only to editable skill folders you act on, plus its own `~/.skills-ui/` directory (category overrides, trash, marketplace drafts and exports); writes are same-origin and JSON-only to block cross-site requests.
 
 ## Roadmap
 
 1. ✅ Scanner + overview (grid/table, facets, search, detail drawer)
 2. ✅ Automatic categories, tags and duplicate detection (local, deterministic). Optional: embeddings / Claude-generated labels
 3. ✅ Create / edit / duplicate / delete with undo, live updates
-4. Bundle skills into a plugin and generate a `marketplace.json`
+4. ✅ Bundle skills into plugins, generate `marketplace.json`, pre-publish safety scan, zip / folder / git export
 5. Polish, CI, `npx skills-ui`
 
 ## License

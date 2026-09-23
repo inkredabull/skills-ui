@@ -5,6 +5,7 @@ import type { SkillDetail, SkillSummary } from '@skills-ui/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { createEventBus } from '../src/events.js';
+import { memoryMarketplaces } from '../src/marketplaces.js';
 import { memoryOverrides } from '../src/overrides.js';
 import { createProvider } from '../src/provider.js';
 
@@ -42,6 +43,8 @@ beforeEach(async () => {
     overrides: memoryOverrides(),
     trashDir: path.join(home, '.skills-ui', 'trash'),
     events,
+    marketplaces: memoryMarketplaces(),
+    exportsDir: path.join(home, 'exports'),
   });
 });
 afterEach(() => rm(home, { recursive: true, force: true }));

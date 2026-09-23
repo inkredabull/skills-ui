@@ -6,6 +6,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createApp } from './app.js';
 import { createEventBus } from './events.js';
+import { fileMarketplaces } from './marketplaces.js';
 import { fileOverrides } from './overrides.js';
 import { createProvider } from './provider.js';
 import { watchRoots } from './watch.js';
@@ -20,6 +21,8 @@ const app = createApp({
   overrides: fileOverrides(home),
   trashDir: path.join(home, '.skills-ui', 'trash'),
   events,
+  marketplaces: fileMarketplaces(home),
+  exportsDir: path.join(home, '.skills-ui', 'exports'),
 });
 
 // Live updates: refresh the cache and nudge open browsers whenever skill folders change on disk.

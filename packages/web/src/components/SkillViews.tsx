@@ -4,6 +4,29 @@ import type { SkillSummary } from '../types';
 interface Props {
   skill: SkillSummary;
   onOpen: () => void;
+  selected?: boolean;
+  onToggle?: () => void;
+}
+
+function Check({
+  selected,
+  onToggle,
+  name,
+}: {
+  selected?: boolean;
+  onToggle?: () => void;
+  name: string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      checked={!!selected}
+      onChange={() => onToggle?.()}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={`Select ${name}`}
+      className={`h-4 w-4 shrink-0 cursor-pointer accent-indigo-600 ${selected ? '' : 'opacity-40 hover:opacity-100'}`}
+    />
+  );
 }
 
 export function SourceBadge({ skill }: { skill: SkillSummary }) {
@@ -32,14 +55,25 @@ export function CategoryChip({ skill }: { skill: SkillSummary }) {
   );
 }
 
-export function SkillCard({ skill, onOpen }: Props) {
+export function SkillCard({ skill, onOpen, selected, onToggle }: Props) {
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
-      className="flex h-48 flex-col gap-2 rounded-xl border border-stone-200 bg-white p-4 text-left transition hover:border-indigo-400 hover:shadow-md dark:border-stone-800 dark:bg-stone-900 dark:hover:border-indigo-500"
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className={`flex h-48 cursor-pointer flex-col gap-2 rounded-xl border border-stone-200 bg-white p-4 text-left transition hover:border-indigo-400 hover:shadow-md dark:border-stone-800 dark:bg-stone-900 dark:hover:border-indigo-500 ${selected ? 'border-indigo-500 ring-2 ring-indigo-500/30' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="truncate font-medium">{skill.name}</h3>
+        <div className="flex min-w-0 items-center gap-2">
+          <Check selected={selected} onToggle={onToggle} name={skill.name} />
+          <h3 className="truncate font-medium">{skill.name}</h3>
+        </div>
         <div className="flex shrink-0 gap-1.5">
           {skill.similar.length > 0 && (
             <span title={`Similar to ${skill.similar.map((x) => x.name).join(', ')}`}>⧉</span>
@@ -61,17 +95,22 @@ export function SkillCard({ skill, onOpen }: Props) {
         <SourceBadge skill={skill} />
         <span className="shrink-0 text-xs text-stone-400">{relativeTime(skill.updatedAt)}</span>
       </div>
-    </button>
+    </div>
   );
 }
 
-export function SkillRow({ skill, onOpen }: Props) {
+export function SkillRow({ skill, onOpen, selected, onToggle }: Props) {
   return (
     <tr
       onClick={onOpen}
       className="cursor-pointer border-t border-stone-200 hover:bg-stone-100 dark:border-stone-800 dark:hover:bg-stone-900"
     >
-      <td className="whitespace-nowrap px-4 py-2 font-medium">{skill.name}</td>
+      <td className="whitespace-nowrap px-4 py-2 font-medium">
+        <span className="flex items-center gap-2">
+          <Check selected={selected} onToggle={onToggle} name={skill.name} />
+          {skill.name}
+        </span>
+      </td>
       <td className="max-w-xl truncate px-4 py-2 text-stone-600 dark:text-stone-400">
         {skill.description}
       </td>

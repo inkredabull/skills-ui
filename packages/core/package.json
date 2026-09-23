@@ -12,6 +12,10 @@
     "./validate": {
       "types": "./dist/validate.d.ts",
       "default": "./dist/validate.js"
+    },
+    "./packaging": {
+      "types": "./dist/packaging.d.ts",
+      "default": "./dist/packaging.js"
     }
   },
   "scripts": {
@@ -20,6 +24,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "yaml": "^2.5.0"
   },
   "devDependencies": {
