@@ -1,16 +1,45 @@
 import { useEffect, useState } from 'react';
 import Markdown from 'react-markdown';
-import { fetchSkill } from '../api';
+import { fetchCategories, fetchSkill, setCategory, type CategoryCount } from '../api';
 import type { SkillDetail } from '../types';
 
-export function SkillDrawer({ id, onClose }: { id: string; onClose: () => void }) {
+interface Props {
+  id: string;
+  onClose: () => void;
+  onOpen: (id: string) => void;
+  /** Called after the skill's metadata changed so the list can refresh. */
+  onChanged: () => void;
+}
+
+const AUTO = '__auto__';
+
+export function SkillDrawer({ id, onClose, onOpen, onChanged }: Props) {
   const [skill, setSkill] = useState<SkillDetail>();
+  const [categories, setCategories] = useState<CategoryCount[]>([]);
   const [error, setError] = useState<string>();
 
   useEffect(() => {
     setSkill(undefined);
+    setError(undefined);
     fetchSkill(id).then(setSkill, (e: unknown) => setError(String(e)));
+    fetchCategories().then(setCategories, () => undefined);
   }, [id]);
+
+  const changeCategory = async (value: string) => {
+    let next: string | null = value === AUTO ? null : value;
+    if (value === '__new__') {
+      next = window.prompt('New category name')?.trim() || null;
+      if (!next) return;
+    }
+    try {
+      await setCategory(id, next);
+      setSkill(await fetchSkill(id));
+      setCategories(await fetchCategories());
+      onChanged();
+    } catch (e) {
+      setError(String(e));
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-10 flex justify-end bg-black/30" onClick={onClose}>
@@ -27,6 +56,59 @@ export function SkillDrawer({ id, onClose }: { id: string; onClose: () => void }
           <>
             <h2 className="text-xl font-semibold">{skill.name}</h2>
             <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">{skill.description}</p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <select
+                value={skill.categorySource === 'manual' ? skill.category : AUTO}
+                onChange={(e) => void changeCategory(e.target.value)}
+                aria-label="Category"
+                className="rounded-lg border border-stone-300 bg-white px-2 py-1 text-sm dark:border-stone-700 dark:bg-stone-900"
+              >
+                <option value={AUTO}>
+                  Auto: {skill.categorySource === 'auto' ? skill.category : '…'}
+                </option>
+                {categories.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+                <option value="__new__">New category…</option>
+              </select>
+              {skill.tags.map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600 dark:bg-stone-800 dark:text-stone-300"
+                >
+                  #{t}
+                </span>
+              ))}
+            </div>
+            {skill.categorySource === 'auto' &&
+              skill.confidence < 0.4 &&
+              skill.alternates.length > 0 && (
+                <p className="mt-2 text-xs text-stone-500">
+                  Low confidence — could also be {skill.alternates.join(' or ')}.
+                </p>
+              )}
+            {skill.similar.length > 0 && (
+              <div className="mt-4 rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800">
+                <p className="mb-1 font-medium">Similar skills</p>
+                <ul className="space-y-1">
+                  {skill.similar.map((x) => (
+                    <li key={x.id}>
+                      <button
+                        onClick={() => onOpen(x.id)}
+                        className="text-indigo-600 hover:underline"
+                      >
+                        {x.name}
+                      </button>{' '}
+                      <span className="text-xs text-stone-500">
+                        {x.source} · {Math.round(x.score * 100)}% match
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
               <dt className="text-stone-500">Source</dt>
               <dd>

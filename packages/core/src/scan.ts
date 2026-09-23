@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { promises as fs, type Dirent } from 'node:fs';
+import { promises as fs, type Dirent, type Stats } from 'node:fs';
 import path from 'node:path';
 import { parseSkillMarkdown } from './parse.js';
 import type { DesktopManifestEntry, Skill, SkillSource } from './types.js';
@@ -58,6 +58,12 @@ function asString(v: unknown): string {
   return typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '';
 }
 
+/** Synced plugin files can carry an epoch mtime; fall back to birthtime, then mtime as-is. */
+function bestTimestamp(stat: Stats): Date {
+  const sane = (d: Date) => d.getFullYear() >= 2000;
+  return [stat.mtime, stat.birthtime].find(sane) ?? stat.mtime;
+}
+
 export async function readSkill(
   file: string,
   source: SkillSource,
@@ -90,7 +96,7 @@ export async function readSkill(
     },
     creatorType: entry?.creatorType,
     enabled: entry?.enabled,
-    updatedAt: entry?.updatedAt ?? stat.mtime.toISOString(),
+    updatedAt: entry?.updatedAt ?? bestTimestamp(stat).toISOString(),
     license: asString(frontmatter.license) || undefined,
     frontmatter,
     bytes: stat.size,

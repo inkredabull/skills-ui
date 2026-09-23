@@ -7,7 +7,7 @@ interface Props {
   onChange: (f: Filters) => void;
 }
 
-type SetKey = 'sources' | 'creators' | 'flags';
+type SetKey = 'categories' | 'sources' | 'creators' | 'flags';
 
 export function Sidebar({ skills, filters, onChange }: Props) {
   const toggle = (key: SetKey, value: string) => {
@@ -17,6 +17,7 @@ export function Sidebar({ skills, filters, onChange }: Props) {
   };
 
   const groups: { title: string; key: SetKey; items: { value: string; count: number }[] }[] = [
+    { title: 'Category', key: 'categories', items: countBy(skills, (s) => [s.category]) },
     { title: 'Source', key: 'sources', items: countBy(skills, (s) => [s.source.label]) },
     {
       title: 'Created by',
@@ -25,7 +26,8 @@ export function Sidebar({ skills, filters, onChange }: Props) {
     },
     { title: 'Properties', key: 'flags', items: countBy(skills, skillFlags) },
   ];
-  const active = filters.sources.size + filters.creators.size + filters.flags.size;
+  const active =
+    filters.categories.size + filters.sources.size + filters.creators.size + filters.flags.size;
 
   return (
     <aside className="hidden w-64 shrink-0 overflow-y-auto border-r border-stone-200 p-5 md:block dark:border-stone-800">
@@ -61,7 +63,13 @@ export function Sidebar({ skills, filters, onChange }: Props) {
       {active > 0 && (
         <button
           onClick={() =>
-            onChange({ ...filters, sources: new Set(), creators: new Set(), flags: new Set() })
+            onChange({
+              ...filters,
+              categories: new Set(),
+              sources: new Set(),
+              creators: new Set(),
+              flags: new Set(),
+            })
           }
           className="text-sm text-indigo-600 hover:underline"
         >

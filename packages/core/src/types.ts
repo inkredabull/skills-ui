@@ -47,3 +47,24 @@ export interface Skill {
   /** Non-fatal problems found while parsing. */
   warnings: string[];
 }
+
+export interface SimilarRef {
+  id: string;
+  name: string;
+  source: string;
+  score: number;
+}
+
+/** Derived metadata: automatic (or manually overridden) category, tags and near-duplicates. */
+export interface Analysis {
+  category: string;
+  categorySource: 'auto' | 'manual';
+  /** 0..1, how far ahead the chosen category is from the runner-up. */
+  confidence: number;
+  alternates: string[];
+  tags: string[];
+  similar: SimilarRef[];
+}
+
+export type SkillSummary = Omit<Skill, 'body' | 'file' | 'dir'> & Analysis;
+export type SkillDetail = Skill & Analysis;

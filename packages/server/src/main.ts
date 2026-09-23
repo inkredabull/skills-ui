@@ -4,11 +4,15 @@ import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createApp } from './app.js';
+import { fileOverrides } from './overrides.js';
 import { createProvider } from './provider.js';
 
 const port = Number(process.env.PORT ?? 4173);
 const extraDirs = (process.env.SKILLS_UI_EXTRA_DIRS ?? '').split(':').filter(Boolean);
-const app = createApp(createProvider(process.env.SKILLS_UI_HOME || undefined, extraDirs));
+const app = createApp(
+  createProvider(process.env.SKILLS_UI_HOME || undefined, extraDirs),
+  fileOverrides(),
+);
 
 // Serve the built web app when present (production / `npx skills-ui`).
 const webDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web/dist');

@@ -112,6 +112,7 @@ export default function App() {
                   <tr>
                     <th className="px-4 py-2">Name</th>
                     <th className="px-4 py-2">Description</th>
+                    <th className="px-4 py-2">Category</th>
                     <th className="px-4 py-2">Source</th>
                     <th className="px-4 py-2">Updated</th>
                   </tr>
@@ -126,7 +127,14 @@ export default function App() {
           )}
         </div>
       </main>
-      {selected && <SkillDrawer id={selected} onClose={() => setSelected(undefined)} />}
+      {selected && (
+        <SkillDrawer
+          id={selected}
+          onClose={() => setSelected(undefined)}
+          onOpen={setSelected}
+          onChanged={() => load()}
+        />
+      )}
     </div>
   );
 }

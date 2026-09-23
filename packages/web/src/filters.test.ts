@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyFilters, emptyFilters, relativeTime } from './filters';
+import { applyFilters, categoryTone, emptyFilters, relativeTime } from './filters';
 import type { SkillSummary } from './types';
 
 const mk = (name: string, over: Partial<SkillSummary> = {}): SkillSummary => ({
@@ -14,6 +14,12 @@ const mk = (name: string, over: Partial<SkillSummary> = {}): SkillSummary => ({
   extras: [],
   hasScripts: false,
   warnings: [],
+  category: 'Engineering',
+  categorySource: 'auto',
+  confidence: 1,
+  alternates: [],
+  tags: [],
+  similar: [],
   ...over,
 });
 
@@ -42,11 +48,36 @@ describe('applyFilters', () => {
   });
 });
 
+describe('categories', () => {
+  const cats = [mk('x', { category: 'Jobs & career', tags: ['resume'] }), mk('y')];
+  it('filters by category', () => {
+    const f = { ...emptyFilters(), categories: new Set(['Jobs & career']) };
+    expect(applyFilters(cats, f).map((s) => s.name)).toEqual(['x']);
+  });
+  it('searches category and tags', () => {
+    expect(applyFilters(cats, { ...emptyFilters(), query: 'resume' }).map((s) => s.name)).toEqual([
+      'x',
+    ]);
+    expect(
+      applyFilters(cats, { ...emptyFilters(), query: 'engineering' }).map((s) => s.name),
+    ).toEqual(['y']);
+  });
+  it('gives a stable tone per category', () => {
+    expect(categoryTone('Engineering')).toBe(categoryTone('Engineering'));
+  });
+  it('flags near-duplicates', () => {
+    const dup = mk('d', { similar: [{ id: 'z', name: 'z', source: 's', score: 0.9 }] });
+    const f = { ...emptyFilters(), flags: new Set(['has near-duplicates']) };
+    expect(applyFilters([dup, mk('e')], f).map((s) => s.name)).toEqual(['d']);
+  });
+});
+
 describe('relativeTime', () => {
   it('formats ages', () => {
     const now = Date.parse('2026-06-01T00:00:00Z');
     expect(relativeTime('2026-05-31T12:00:00Z', now)).toBe('today');
     expect(relativeTime('2026-05-20T00:00:00Z', now)).toBe('12d ago');
     expect(relativeTime('2025-01-01T00:00:00Z', now)).toBe('1y ago');
+    expect(relativeTime('1970-01-01T00:00:00Z', now)).toBe('');
   });
 });
