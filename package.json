@@ -1,0 +1,33 @@
+{
+  "name": "skills-ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local web UI to browse, organize and package Agent Skills",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build -w @skills-ui/core && npm run build -w @skills-ui/web && npm run build -w @skills-ui/server",
+    "dev": "npm run dev -w @skills-ui/server & npm run dev -w @skills-ui/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.3.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.1.0"
+  }
+}
